@@ -1,0 +1,486 @@
+---
+title: "Final Report"
+author: "Beatrice Febrina"
+date: "2023-04-20"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(ggplot2)
+library(corrplot) 
+library(lubridate)
+library(tidyr)
+library(stringr)
+library(inspectdf)
+library(tidymodels)
+library(tidyverse)
+library(forcats)
+library(skimr)
+library(MASS)
+library(kknn)
+library(tinytex)
+library(skimr)
+library(vip)
+library(discrim)
+```
+
+# Executive Summary
+
+Spotify is an audio streaming and media services provider with over 365
+million monthly active users, including 165 million paying subscribers. As the world's largest music streaming provider, they are interested in how year, tempo, danceability and speechiness factors can predict a song's genre to enhance customer's experience. 
+
+After carrying a full analysis and building a model using The random forest with 100 trees and 5 levels and the data provided, we can conclude that although the model is pretty accurate in predicting the true negatives (specificity), the model is not very accurate in predicting the true positive (sensitivity). The model's senstivity can be improved slightly by using more variables as predictors in predicting the genre. However, such improvement may still consider the model to be inaccurate. 
+
+
+# Methods
+
+After reducing the spotify data to 6000 observations (1000 observations per genre). The spotify data with variable year, speechiness, danceability, tempo, popularity, energy, key, loudness, acousticness, instrumentalness, liveness, valence, duration_ms and mode is used to model the song's genre prediction. In this report we will be looking at how well the following factors can predict song genre:
+
+- Year
+- Tempo
+- Danceability
+- Speechiness
+
+Additionally, another prediction using all relevant variables including mode, popularity, energy, key, loudness, acousticness, instrumentalness, liveness, valence and duration in ms is also used to show how well the model can predict songs with just the 4 above factors compared to using more factors.
+
+The following analysis was completed in R version 4.01.1 using the
+tidyverse, tidymodels and dplyr packages.
+
+The steps carried out to build the model is:
+
+- Split and Preprocessing
+- Model Fitting and Tuning
+- Model Evaluation
+- Model Selection
+
+In the splitting process, intial_split is used from the rsample package. The data is split into 4500 observations in the trainiang set and 1500 observations in the testing set as seen in the appendix (split section). Data splitting will help with avoiding over fitting and the evaluation of models. 
+
+
+Preprocessing is the generalised term for performing mathematical operations on your data before modelling it to improve the predictive power of the model. Genre is the outcome variable and 4 preprocessing steps are carried out to improve the model:
+
+- step_zv: remove predictors that have 0 variance
+- step_dummy: to convert categorical variables to dummy variables
+- step_normalise: improve model performance by normalising all predictors to have a mean of 0 and standard deviation of 1
+- step_corr: remove highly correlated predictor variable. 
+
+The preprocessed training data can be seen in appendix (preprocessing section) after juicing the recipe.
+
+As consulted by the statistician, 3 models would be compared for predicting on this dataset:
+
+- The Linear discriminant analysis (LDA)
+- The K-nearest neighbours model with a range of 1 to 100 and 20 levels (KNN) 
+- The random forest with 100 trees and 5 levels (RF)
+
+The KNN and RF models need to be tuned to ensure that it performs at its best. This process is done by tuning the models with the 10-fold cross validation set from the preprocessed tuning data and a grid of ranges. Using the collect_metrics function, best roc_auc is chosen to determine the best parameters for the models.
+
+
+
+# Results
+
+## Explanatory Analysis
+
+Does the popularity of songs differ between genres?
+
+There seems to be a difference between popularity across different genres. Based on figure 1, EDM has the lowest median popularity at around 37 while pop has the highest median popularity at around 52. The other genres (latin, rock, rap r&b) has similar median popularity at between 40-50. Besides that, rock has the largest IQR compared to other genres, which means that "rock" songs has more variability in terms of popularity. While rap has the smallest IQR which can indicate less variability.
+
+
+Is there a difference in speechiness for each genre?
+
+There seems to be similar median of speechiness across all genres except rap as seen in figure 2. Latin, rock, r&b, EDM and rock has a median speechiness approximately at 0.06 with rock having the slightly lower speechiness compared to the other genres at around 0.04-0.05. However, rap has the highest speechiness by a considerable amount at around 0.17. This is predictable considering rap songs has more lyrics compared to the other genres. 
+
+
+How does track popularity change over time?
+
+There seems to be more or less constant popularity between 1960 - 2000 with slight increase to around 50 from 40 in 1980 as seen in figure 3. In 2010s, However, there is a significant drop in popularity to around 30. Looking at figure 4, r&b and edm dropped the most compared to other genres in 2010 to around 25 and pop has the lowest drop at only 50 to 43 from 1980 to 2010. With this sudden drop in 2010, there must be economic downturns on the music industry that might affect this dropp across all genres. However, the popularity for all genres quickly pick up from 2010 to 2020 except for rock. Popularity for all genres rose to around 55 in 2020. Though genres such as latin, pop, r&b, and rap follow this trend (seen in figure 4), edm's popularity fall slightly short at only 45, while rock does not follow the trend at all. Rock's popularity peaked at around 1985 and it has been dropping ever since with only around 37 popularity in 2020. 
+
+
+
+## Model Evaluation
+
+Table 1 shows the AUC and accuracy of all the 3 models. The RF model with mtry of 4, 100 trees and min_n of 40 has the highest AUC at 0.846. At this parameter, the accuracy is also better compared to other models at 0.549. An AUC of 0.846 means that the RF classifier works well and are able to distinguish between the correct genre and the incorrect genre.
+
+The model fitting is done twice. The first one with genre as the outcome variable and year, tempo, danceability and speechiness as the predictor. The second one with genre as the outcome variable and all variables as the predictor. Looking at figure 5, all predictors have an importance of over 0.05. Year having the highest importance at around 0.094 followed by tempo at 0.085 and danceability at 0.059 and finally speechiness at around 0.05.
+
+Figure 6 shows that the 4 variable above are the most important predictor. However the importance of tempo dropped significantly to around 0.06 and Year becoming the most important predictor quite significantly compared to other variables.
+
+Thus the variable year, tempo, danceability and speechiness are strong predictors in predicting the genre of the songs compared to other variables.
+
+
+
+# Discussion
+
+Based on the model's outcomes with just the 4 predictors, the comparison between the predicted genre and the actual genre shows only a 0.461 accuracy. Table 2 also shows that the sensitivity is very low at 0.463 which means that if the actual genre is "rock" (it could be edm or pop or etc.), we are correctly predicting them as "rock" approximately 47.1% of the time. However, the model has far better specificity at 0.894. Which means that if the actual genre is not "rock" we are correctly predicting them as not "rock" approximately 89.4% of the time.
+
+Table 3 shows how the sensitivity and the specificity would be if we fit all variables as predictors to the model. It shows that the specificity stays the same however the sensitivity improved to 0.551. This means that given the actual genre is "rock" and the model predicting it correctly as "rock" 54.8% of the time, which is an 7.7% increase.
+
+This means that using the factors year, tempo, danceability and speechiness is not very accurate in correctly predicting the correct genre. Though using more variables as predictor increases the accuracy, it still would not make the model very accurate. However the model is pretty accurate at correctly predicting the wrong genre.
+
+Additionally, after looking at the confusion matrix, we can also conclude that identifying "rock" songs has the highest accuracy for both prediction model (with just 4 predictors and all predictors) and "r&b" and pop" songs has the lowest accuracy ("r&b" lowest with just 4 predictors and "pop" lowest with all predictors).
+
+
+# Conclusion 
+
+After performing analysis of the data, data variables required as a predictor in the model built to predict a song's genre are year, speechiness, danceability, tempo, popularity, energy, key, loudness, acousticness, instrumentalness, liveness, valence, duration_ms. Additionally, after assessing which model to choose between LDA, KNN and RF, after tuning and fitting the model, RF with 100 trees and 5 levels has the best AUC. Thus, that model is used to predict the song genre using year, tempo, speechiness and danceability variable as the predictor. Year is the most important predictor in predicting the genre followed by tempo, danceability and speechiness. Results of the prediction using the model used however do not provide the most accurate prediction as sensitivity is only 0.463. Sensitivity can be improved by using all the variables as predictors in predicting the genre. However, it only improve the sensitivity by 0.077. Nevertheless, some genres are more easily distinguised and would provide more accurate predictions such as "rock". "Pop" songs however is the least accurate in prediction. Thus, this model may not be very effective in predicting a song's genre especially some genres more than others.
+
+# Appendix
+
+```{r read}
+spotify_songs <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-01-21/spotify_songs.csv')
+
+spotify_songs
+
+```
+
+## Data Cleaning
+
+```{r data clean}
+spotify_songs <- spotify_songs %>% drop_na()
+
+spotify_songs <- spotify_songs %>%
+  rename(genre = playlist_genre)  %>%
+  rename(popularity = track_popularity) %>% 
+  rename(date = track_album_release_date) 
+
+spotify_songs <- spotify_songs %>% mutate(year = lubridate::year(ymd(date)))
+
+spotify_songs <- spotify_songs %>% drop_na()
+
+spotify_songs <- spotify_songs %>%
+  mutate(year = as.integer(year),
+         key = as.integer(key),
+         genre = as.factor(genre),
+         mode = as.factor(mode),
+         popularity = as.integer(popularity))
+
+
+spotify_new <- subset(spotify_songs, select = -c(track_id, track_name, track_artist, track_album_id, track_album_name, playlist_id, playlist_subgenre, playlist_name, date) )
+
+spotify_new <- spotify_new %>% relocate(genre,year,speechiness,danceability,tempo,mode)
+
+spotify_new %>% count(genre)
+
+
+set.seed(1879186)
+spotify_final <- spotify_new %>%
+  group_by(genre) %>%
+  sample_n(1000)
+
+spotify_final <- spotify_final %>% ungroup(genre)
+
+skim_without_charts(spotify_final)
+      
+```
+
+## Explanatory Analysis
+```{r EA1}
+# Does the popularity of songs differ between genres?
+
+ggplot(spotify_final, aes(x = genre, y = popularity)) +
+  geom_boxplot(aes(fill = genre)) +
+  labs(caption = "Figure 1: Side-by-side boxplot of popularity against genre")+
+  theme(plot.caption = element_text(hjust = 0.5))
+```
+
+```{r EA2}
+# Is there a difference in speechiness for each genre?
+
+ggplot(spotify_final, aes(x = genre, y = speechiness)) +
+  geom_boxplot(aes(fill = genre)) +
+  labs(caption = "Figure 2: Side-by-side boxplot of speechiness against genre")+
+  theme(plot.caption = element_text(hjust = 0.5))
+
+```
+
+
+```{r EA3}
+# How does track popularity change over time?
+
+ggplot(spotify_final, aes(x = year, y = popularity)) +
+  geom_smooth() +
+  labs(caption = "Figure 3: Line graph of popularity against year ")+
+  theme(plot.caption = element_text(hjust = 0.5))
+
+
+```
+
+```{r EA4}
+ggplot(spotify_final, aes(x = year, y = popularity, color = genre)) +
+  geom_smooth() +
+  labs(caption = "Figure 4: Line graph of popularity against year segmented by each genre")+
+  theme(plot.caption = element_text(hjust = 0.5))
+```
+
+## Split
+
+```{r split}
+set.seed( 1879186 )
+spotify_split <- initial_split(spotify_final)
+spotify_train <- training( spotify_split )
+spotify_test <- testing(spotify_split)
+
+spotify_split
+```
+
+
+## Preprocessing
+
+```{r preprocessing}
+spotify_recipe <- recipe( genre ~ ., data = spotify_train ) %>%
+  step_zv( all_predictors() ) %>% 
+  step_dummy( all_nominal(), -all_outcomes() ) %>%
+  step_normalize( all_predictors() ) %>% 
+  step_corr( all_predictors() ) %>% 
+  prep()
+
+spotify_recipe
+
+```
+
+```{r preprocessing 2}
+spotify_train_preproc <- juice(spotify_recipe)
+spotify_test_preproc <-bake(spotify_recipe, spotify_test)
+
+set.seed( 1879186 )
+spotify_cv <- vfold_cv( spotify_train_preproc, v = 10 )
+
+skim_without_charts(spotify_train_preproc)
+```
+
+
+## Models Spec
+
+```{r}
+# random forest
+rf_spec <- rand_forest( mode = "classification",
+                        trees = 100, 
+                        mtry = tune(),
+                        min_n = tune() ) %>% 
+  set_engine( "ranger", importance = "permutation" )
+
+
+# knn
+knn_spec <- nearest_neighbor(mode = "classification", neighbors = tune()) %>%
+  set_engine("kknn")
+
+# LDA
+lda_spec <- discrim_linear( mode = "classification" ) %>%
+set_engine( "MASS" )
+```
+
+## Model Fitting
+
+## LDA
+
+```{r LDA model fitting}
+
+spotify_lda<- discrim_linear(mode = "classification") %>% set_engine("MASS") %>%
+  fit(genre ~ year + speechiness + danceability + tempo, data = spotify_train_preproc)
+
+spotify_lda
+
+```
+
+
+### KNN
+
+```{r knn grid}
+knn_grid <- grid_regular(neighbors( range = c(1, 100) ),
+                        levels = 20)
+
+knn_grid
+```
+
+```{r knn tuning}
+doParallel::registerDoParallel()
+knn_tune <- tune_grid(object = knn_spec,
+                       preprocessor = recipe(genre ~ ., data = spotify_train_preproc),
+                       resamples = spotify_cv,
+                       grid = knn_grid)
+
+knn_tune %>% collect_metrics()
+```
+
+```{r knn best auc}
+best_auc_knn <- select_best(knn_tune, "roc_auc")
+
+final_knn <- finalize_model(knn_spec, best_auc_knn)
+final_knn
+```
+```{r knn model fitting}
+spotify_knn <- final_knn %>% fit(genre ~ year + speechiness + danceability + tempo, data = spotify_train_preproc)
+
+spotify_knn
+```
+
+
+### Random Forest
+```{r rf model fitting grid}
+rf_spec_grid <- grid_regular( 
+  finalize( mtry(), 
+            spotify_train_preproc %>% 
+              dplyr::select( -genre ) ),
+  min_n(),
+  levels = 5 )
+
+rf_spec_grid
+
+```
+```{r rf model fitting tuning}
+doParallel::registerDoParallel() # This makes macs run a little faster 
+rf_tuned <- tune_grid( object = rf_spec,
+                       preprocessor = recipe(genre ~ . , data = spotify_train_preproc),
+                       resamples = spotify_cv,
+                       grid = rf_spec_grid )
+
+rf_tuned %>% collect_metrics()
+```
+
+```{r rf model fitting best auc}
+best_auc_rf <- select_best( rf_tuned, "roc_auc" )
+
+final_rf <- finalize_model( rf_spec, best_auc_rf )
+final_rf
+```
+```{r model fitting}
+spotify_rf <- final_rf %>% 
+  fit( genre ~  year + speechiness + danceability + tempo, data = spotify_train_preproc )
+
+spotify_rf
+```
+
+
+## Model Selection
+
+```{r}
+# Rf
+set.seed(1879186)
+rf_cv <- fit_resamples( object = final_rf,
+                        preprocessor = recipe(genre ~ . , data = spotify_train_preproc), 
+                        resamples = spotify_cv )
+rf_cv %>% 
+  collect_metrics()
+
+# knn
+set.seed(1879186)
+knn_cv <- fit_resamples( object = final_knn, 
+                        preprocessor = recipe(genre ~ ., data = spotify_train_preproc),
+                        resamples = spotify_cv )
+
+knn_cv %>% 
+  collect_metrics()
+
+# LDA
+set.seed(1879186)
+lda_cv <- fit_resamples(object = lda_spec,
+preprocessor = recipe(genre ~ ., data = spotify_train_preproc),
+resamples = spotify_cv)
+
+lda_cv %>%
+collect_metrics()
+
+cv_compare <- lda_cv %>% collect_metrics %>% dplyr::select(.metric, .estimator, mean) %>% rename(LDA_mean = mean) %>% bind_cols(
+  knn_cv %>% collect_metrics %>% dplyr::select(KNN_mean = mean)
+)%>% bind_cols(
+  rf_cv %>% collect_metrics %>% dplyr::select(RF_mean = mean)
+)
+cv_compare %>% knitr::kable(digits = 3, format.args = list(big.mark = ","),
+caption = "Table 1: Mean metrics of accuracy and AUC for LDA, KNN and RF models")
+
+```
+
+## Model Evaluation
+
+```{r model eval}
+set.seed(1879186)
+spotify_rf_4 <- final_rf %>% 
+  fit( genre ~ year + speechiness + danceability + tempo , data = spotify_train_preproc )
+
+spotify_rf_4
+```
+
+```{r}
+spotify_imp_4 <- spotify_rf_4 %>% vip() 
+spotify_imp_4 + labs(caption = "Figure 5: Level of importance of year, tempo, danceability and speechiness variable in predicting genre") + theme(plot.caption = element_text(hjust = 1.0))
+```
+
+
+```{r model eval all}
+set.seed(1879186)
+spotify_rf_all <- final_rf %>% 
+  fit( genre ~ . , data = spotify_train_preproc )
+
+spotify_rf_all
+```
+```{r}
+spotify_rf_all %>% vip() + labs(caption = "Figure 6: Level of importance of all variable in predicting genre") + theme(plot.caption = element_text(hjust = 0.5))
+```
+
+## Model Prediction
+
+### only fitting year, danceability, tempo and speechiness
+
+```{r model pred}
+spotify_preds <- predict( spotify_rf_4, # The predictions
+                         new_data = spotify_test_preproc ) %>% 
+  bind_cols( spotify_test_preproc %>%  # Add the truth
+               dplyr::select( genre ) )%>% bind_cols(
+  predict(spotify_rf_4, spotify_test_preproc, type = "prob")
+)
+spotify_preds 
+```
+
+```{r}
+spotify_preds %>% 
+  metrics( truth = genre, estimate = .pred_class)
+```
+
+```{r}
+spotify_cm <- spotify_preds %>% conf_mat(truth = genre, estimate = .pred_class)
+
+spotify_cm 
+```
+
+```{r}
+
+spotify_preds %>%
+sensitivity( truth = genre , estimate = .pred_class ) %>% bind_rows(
+  spotify_preds %>% specificity(truth = genre, estimate = .pred_class)
+) %>% knitr::kable(digits = 3, format.args = list(big.mark = ","),
+caption = "Table 2: sensitivity and specificity of the RF model using the variable year, tempo, danceability and speechiness")
+
+
+```
+
+### fitting all variables
+
+```{r}
+spotify_preds_t <- predict( spotify_rf_all, # The predictions
+                         new_data = spotify_test_preproc ) %>% 
+  bind_cols( spotify_test_preproc %>%  # Add the truth
+               dplyr::select( genre ) )
+
+spotify_preds_t %>% 
+  metrics( truth = genre, estimate = .pred_class)
+```
+
+```{r}
+spotify_cm_t <- spotify_preds_t %>% conf_mat(truth = genre, estimate = .pred_class)
+
+
+spotify_cm_t
+```
+
+```{r}
+spotify_preds_t %>%
+sensitivity( truth = genre , estimate = .pred_class ) %>% bind_rows(
+  spotify_preds %>% specificity(truth = genre, estimate = .pred_class)
+) %>% knitr::kable(digits = 3, format.args = list(big.mark = ","),
+caption = "Table 3: sensitivity and specificity of the RF model using all variable")
+```
+
+
+
